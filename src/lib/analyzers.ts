@@ -66,25 +66,39 @@ const VOID_ELEMENTS = new Set([
   'link', 'meta', 'param', 'source', 'track', 'wbr',
 ]);
 
-function findMismatchedTags(html: string): { unclosed: string[]; extraClosing: string[]; mismatched: string[] } {
-  const unclosed: string[] = [];
-  const extraClosing: string[] = [];
-  const mismatched: string[] = [];
+interface TagIssue {
+  tag: string;
+  line: number;
+}
 
-  // Strip comments, scripts, styles, and CDATA
+function getLineNumber(text: string, charIndex: number): number {
+  let line = 1;
+  for (let i = 0; i < charIndex && i < text.length; i++) {
+    if (text[i] === '\n') line++;
+  }
+  return line;
+}
+
+function findMismatchedTags(html: string): { unclosed: TagIssue[]; extraClosing: TagIssue[]; mismatched: TagIssue[] } {
+  const unclosed: TagIssue[] = [];
+  const extraClosing: TagIssue[] = [];
+  const mismatched: TagIssue[] = [];
+
+  // Strip comments, scripts, styles, and CDATA — replace with same-length whitespace to preserve positions
   const cleaned = html
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '')
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '');
+    .replace(/<!--[\s\S]*?-->/g, m => ' '.repeat(m.length))
+    .replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, m => ' '.repeat(m.length))
+    .replace(/<script[\s\S]*?<\/script>/gi, m => ' '.repeat(m.length))
+    .replace(/<style[\s\S]*?<\/style>/gi, m => ' '.repeat(m.length));
 
   const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*?\/?>/g;
-  const stack: string[] = [];
+  const stack: { tag: string; line: number }[] = [];
   let match;
 
   while ((match = tagRegex.exec(cleaned)) !== null) {
     const fullTag = match[0];
     const tagName = match[1]!.toLowerCase();
+    const line = getLineNumber(html, match.index);
 
     // Skip void elements and self-closing
     if (VOID_ELEMENTS.has(tagName) || fullTag.endsWith('/>')) continue;
@@ -92,29 +106,32 @@ function findMismatchedTags(html: string): { unclosed: string[]; extraClosing: s
     if (fullTag.startsWith('</')) {
       // Closing tag
       if (stack.length === 0) {
-        extraClosing.push(tagName);
-      } else if (stack[stack.length - 1] === tagName) {
+        extraClosing.push({ tag: tagName, line });
+      } else if (stack[stack.length - 1]!.tag === tagName) {
         stack.pop();
       } else {
         // Look for the tag in the stack
-        const idx = stack.lastIndexOf(tagName);
+        let idx = -1;
+        for (let i = stack.length - 1; i >= 0; i--) {
+          if (stack[i]!.tag === tagName) { idx = i; break; }
+        }
         if (idx >= 0) {
           // Everything between is unclosed
           const unclosedBetween = stack.splice(idx);
           unclosedBetween.pop(); // Remove the matched one
-          unclosedBetween.forEach(t => unclosed.push(t));
+          unclosedBetween.forEach(t => unclosed.push({ tag: t.tag, line: t.line }));
         } else {
-          mismatched.push(tagName);
+          mismatched.push({ tag: tagName, line });
         }
       }
     } else {
       // Opening tag
-      stack.push(tagName);
+      stack.push({ tag: tagName, line });
     }
   }
 
   // Remaining in stack are unclosed
-  stack.forEach(t => unclosed.push(t));
+  stack.forEach(t => unclosed.push({ tag: t.tag, line: t.line }));
 
   return { unclosed, extraClosing, mismatched };
 }
@@ -1104,31 +1121,40 @@ export function analyzeCodeQuality(content: string): AnalysisResult {
   const tagResult = findMismatchedTags(content);
 
   if (tagResult.unclosed.length > 0) {
-    const unique = [...new Set(tagResult.unclosed)];
+    const lineDetails = tagResult.unclosed
+      .slice(0, 8)
+      .map(t => `<${t.tag}> on line ${t.line}`)
+      .join(', ');
     findings.push({
       severity: 'critical',
-      message: `${tagResult.unclosed.length} unclosed HTML tag(s): <${unique.slice(0, 5).join('>, <')}>`,
-      detail: 'Every opening tag must have a matching closing tag. Unclosed tags cause unpredictable rendering across email clients',
+      message: `${tagResult.unclosed.length} unclosed HTML tag(s)`,
+      detail: `${lineDetails}. Every opening tag must have a matching closing tag — unclosed tags cause unpredictable rendering across email clients`,
     });
   } else {
     findings.push({ severity: 'pass', message: 'All HTML tags properly closed' });
   }
 
   if (tagResult.extraClosing.length > 0) {
-    const unique = [...new Set(tagResult.extraClosing)];
+    const lineDetails = tagResult.extraClosing
+      .slice(0, 8)
+      .map(t => `</${t.tag}> on line ${t.line}`)
+      .join(', ');
     findings.push({
       severity: 'critical',
-      message: `${tagResult.extraClosing.length} extra closing tag(s): </${unique.slice(0, 5).join('>, </')}>`,
-      detail: 'Closing tags without matching opening tags indicate malformed HTML',
+      message: `${tagResult.extraClosing.length} extra closing tag(s)`,
+      detail: `${lineDetails}. Closing tags without matching opening tags indicate malformed HTML`,
     });
   }
 
   if (tagResult.mismatched.length > 0) {
-    const unique = [...new Set(tagResult.mismatched)];
+    const lineDetails = tagResult.mismatched
+      .slice(0, 8)
+      .map(t => `<${t.tag}> on line ${t.line}`)
+      .join(', ');
     findings.push({
       severity: 'critical',
-      message: `${tagResult.mismatched.length} mismatched tag(s): <${unique.slice(0, 5).join('>, <')}>`,
-      detail: 'Tags are closed in the wrong order. This will cause broken layouts in strict email clients',
+      message: `${tagResult.mismatched.length} mismatched tag(s)`,
+      detail: `${lineDetails}. Tags are closed in the wrong order — this will cause broken layouts in strict email clients`,
     });
   }
 
