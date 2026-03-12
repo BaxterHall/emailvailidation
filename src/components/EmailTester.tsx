@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import {
   Upload, Activity, Zap, Shield, Eye, Code, Accessibility,
   FileText, AlertTriangle, Monitor, Smartphone, Mail,
   ChevronRight, BarChart3, Palette, Link2, Type, Layers,
-  Box, FileCode, Gauge, Wrench,
+  Box, FileCode, Gauge, Wrench, BookOpen,
 } from 'lucide-react';
 import { runFullAnalysis } from '@/lib/analyzers';
 import { Finding, FullAnalysisResults, TabId } from '@/types';
@@ -212,17 +213,27 @@ export default function EmailTester() {
               <p className="text-xs text-gray-500">2026 Best Practices &bull; Deliverability &bull; Compatibility</p>
             </div>
           </div>
-          {results && (
-            <div className="flex items-center gap-4">
-              <ScoreGauge score={results.overall} size={48} />
-              <div className="hidden sm:block text-right">
-                <div className="text-sm font-semibold text-black">Score: {results.overall}/100</div>
-                <div className="text-xs text-gray-500">
-                  {results.overall >= 80 ? 'Ready to send' : results.overall >= 60 ? 'Needs improvement' : 'Review required'}
+          <div className="flex items-center gap-4">
+            <Link
+              href="/methodology"
+              className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
+              style={{ color: '#0167b4' }}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span className="hidden sm:inline">Methodology</span>
+            </Link>
+            {results && (
+              <>
+                <ScoreGauge score={results.overall} size={48} />
+                <div className="hidden sm:block text-right">
+                  <div className="text-sm font-semibold text-black">Score: {results.overall}/100</div>
+                  <div className="text-xs text-gray-500">
+                    {results.overall >= 80 ? 'Ready to send' : results.overall >= 60 ? 'Needs improvement' : 'Review required'}
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </header>
 

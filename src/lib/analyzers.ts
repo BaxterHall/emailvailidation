@@ -5,48 +5,31 @@ import {
 
 // --- Helpers ---
 
+// Scoring approach inspired by Mail-Tester.com (10-point scale mapped to 0-100):
+// - Start at 100, deduct points per issue
+// - Critical issues: -15 each (similar to SpamAssassin's 5.0 default threshold = fail)
+// - Warnings: -5 each (similar to SpamAssassin 1-2 point rules)
+// - Info: -1 each (minor, informational)
+// - Passes add no points (they prevent deductions by not triggering issues)
+// Sources: Mail-Tester uses a 10-point deduction system; SpamAssassin default threshold is 5.0
 function calcScore(findings: Finding[]): number {
   const criticals = findings.filter(f => f.severity === 'critical').length;
   const warnings = findings.filter(f => f.severity === 'warning').length;
   const infos = findings.filter(f => f.severity === 'info').length;
-  const passes = findings.filter(f => f.severity === 'pass').length;
   const total = findings.length;
 
-  // No findings = nothing to evaluate = fail
   if (total === 0) return 0;
 
-  // Weighted scoring: passes earn points, issues lose points, proportional to total checks
-  const actionable = criticals + warnings + passes;
+  // Start at 100, deduct per issue
+  let score = 100;
+  score -= criticals * 15;
+  score -= warnings * 5;
+  score -= infos * 1;
 
-  // Critical findings cap the maximum achievable score
-  // Scale cap based on density — few criticals among many passes is much better
-  const criticalDensity = actionable > 0 ? criticals / actionable : 1;
-  const baseCap = criticals === 0 ? 100 :
-    criticals === 1 ? 75 :
-    criticals === 2 ? 65 :
-    criticals === 3 ? 55 : 35;
-  // If criticals are a small fraction of total checks, ease up on the cap
-  const criticalCap = criticalDensity < 0.15
-    ? Math.min(baseCap + 15, 100)
-    : criticalDensity < 0.25
-    ? Math.min(baseCap + 8, 100)
-    : baseCap;
-  if (actionable === 0) return Math.min(30, criticalCap);
-
-  // Base score from pass ratio
-  const passRatio = passes / actionable;
-  let score = Math.round(passRatio * 100);
-
-  // Light proportional penalties — the pass ratio already accounts for issues
-  const criticalRatio = criticals / actionable;
-  const warningRatio = warnings / actionable;
-  score -= Math.round(criticalRatio * 30);
-  score -= Math.round(warningRatio * 10);
-  // Info items are minor — tiny flat penalty
-  score -= Math.min(Math.floor(infos / 3), 3);
-
-  // Apply critical cap
-  score = Math.min(score, criticalCap);
+  // Cap: any critical issue means max 75; 2+ criticals max 60; 4+ max 40
+  if (criticals >= 4) score = Math.min(score, 40);
+  else if (criticals >= 2) score = Math.min(score, 60);
+  else if (criticals >= 1) score = Math.min(score, 75);
 
   return Math.max(0, Math.min(100, score));
 }
@@ -169,17 +152,35 @@ export function analyzeSubjectLine(subject: string): AnalysisResult {
     findings.push({ severity: 'pass', message: `Subject line length is acceptable (${len} chars)` });
   }
 
-  // Spam trigger words
+  // Spam trigger words — based on SpamAssassin rules (FUZZY_FREE, FUZZY_CREDIT, GUARANTEED,
+  // URG_BIZ, etc.) and published lists from HubSpot, Mailchimp, and Campaign Monitor.
+  // Grouped by category for maintainability.
   const spamWords = [
-    'free', 'guaranteed', 'winner', 'cash', 'urgent', 'act now', '!!!',
-    'limited time', 'buy now', 'click here', 'congratulations', 'no cost',
-    'risk-free', 'no obligation', 'order now', 'apply now', 'dear friend',
-    'incredible deal', 'you have been selected', 'double your', 'earn extra',
-    'million dollars', 'work from home', 'this is not spam'
+    // Urgency / pressure (SpamAssassin URG_BIZ, STRONG_BUY rules)
+    'act now', 'limited time', 'urgent', 'expires', 'hurry', 'last chance',
+    'don\'t delay', 'immediate', 'only today', 'deadline',
+    // Financial / too-good-to-be-true (SpamAssassin FUZZY_FREE, GUARANTEED rules)
+    'free', 'no cost', 'no fee', 'risk-free', 'no obligation', 'guaranteed',
+    'winner', 'cash', 'million dollars', 'earn extra', 'double your',
+    'lowest price', 'best price', 'bargain', 'affordable',
+    // Purchase pressure (SpamAssassin STRONG_BUY)
+    'buy now', 'order now', 'buy direct', 'shop now', 'apply now',
+    'call now', 'get it now',
+    // Spam phrases (SpamAssassin DEAR_FRIEND, NOT_SPAM rules)
+    'dear friend', 'this is not spam', 'you have been selected',
+    'congratulations', 'click here', 'click below',
+    'incredible deal', 'special offer', 'exclusive deal',
+    // Financial services (SpamAssassin FUZZY_CREDIT, MORTGAGE rules)
+    'no credit check', 'credit score', 'debt relief', 'consolidate debt',
+    // MLM / work from home (SpamAssassin WORK_AT_HOME)
+    'work from home', 'be your own boss', 'extra income',
+    'make money', 'income from home',
+    // Excessive punctuation patterns
+    '!!!',
   ];
   const foundSpam = spamWords.filter(w => subject.toLowerCase().includes(w));
   if (foundSpam.length > 0) {
-    findings.push({ severity: 'warning', message: `Spam trigger words detected: ${foundSpam.join(', ')}`, detail: 'These words may cause email clients to flag your email' });
+    findings.push({ severity: 'warning', message: `Spam trigger words detected: ${foundSpam.join(', ')}`, detail: 'These match SpamAssassin rules. Note: individual words matter less than combinations — sender reputation accounts for 70-80% of filtering decisions (Validity/Return Path data)' });
   } else {
     findings.push({ severity: 'pass', message: 'No obvious spam trigger words' });
   }
@@ -387,9 +388,22 @@ export function analyzeCTA(content: string): CTAAnalysisResult {
     if (hasButtonStyling) isCTA = true;
 
     if (isCTA) {
+      // Estimate pixel position based on HTML structure before this link.
+      // Industry data (Litmus, Email on Acid): above-fold is ~300px (Outlook preview)
+      // to ~500px (Gmail web). We use 400px as a safe middle ground.
+      // Estimation: each <tr>/<div>/<p> ≈ ~40px, each <img> ≈ ~150px,
+      // spacer <td> with height ≈ its height value, padding/margin adds up.
       const contentBeforeLink = content.substring(0, match.index);
-      const estimatedPosition = (contentBeforeLink.match(/<tr|<div|<p/gi) || []).length;
-      const isAboveFold = estimatedPosition < 8;
+      const blockElements = (contentBeforeLink.match(/<tr|<div|<p/gi) || []).length;
+      const imagesBefore = (contentBeforeLink.match(/<img/gi) || []).length;
+      // Extract explicit height values from spacers/tds
+      const heightMatches = contentBeforeLink.match(/height[=:]\s*["']?(\d+)/gi) || [];
+      const explicitHeight = heightMatches.reduce((sum, m) => {
+        const val = parseInt(m.replace(/[^0-9]/g, ''));
+        return sum + (val > 0 && val < 500 ? val : 0);
+      }, 0);
+      const estimatedPx = (blockElements * 40) + (imagesBefore * 150) + explicitHeight;
+      const isAboveFold = estimatedPx < 400; // 400px = safe for most clients (Litmus data)
 
       ctas.push({
         text: linkText.substring(0, 100),
@@ -417,10 +431,12 @@ export function analyzeCTA(content: string): CTAAnalysisResult {
     findings.push({ severity: 'pass', message: `${aboveFoldCTAs} CTA${aboveFoldCTAs > 1 ? 's' : ''} above fold` });
   }
 
+  // CTA count — Hick's Law (psychology): too many choices reduces conversion.
+  // Campaign Monitor & HubSpot data: 1-3 CTAs is optimal for click-through rate.
   if (ctas.length > 5) {
-    findings.push({ severity: 'warning', message: `Too many CTAs (${ctas.length})`, detail: 'Too many choices can overwhelm readers. Aim for 2-3 CTAs' });
-  } else if (ctas.length >= 2 && ctas.length <= 3) {
-    findings.push({ severity: 'pass', message: 'Optimal CTA count (2-3)' });
+    findings.push({ severity: 'warning', message: `Too many CTAs (${ctas.length})`, detail: 'Hick\'s Law: too many choices reduces conversions. Campaign Monitor data shows 1-3 CTAs is optimal' });
+  } else if (ctas.length >= 1 && ctas.length <= 3) {
+    findings.push({ severity: 'pass', message: `Optimal CTA count (${ctas.length})` });
   }
 
   // Check for vague CTA text
@@ -500,37 +516,45 @@ export function analyzeContent(content: string): AnalysisResult {
     findings.push({ severity: 'pass', message: '<title> tag present' });
   }
 
+  // Link count — SpamAssassin penalizes excessive URIs. Industry consensus: 2-5 ideal,
+  // 10+ raises spam filter flags (Campaign Monitor, Mailchimp guidelines).
   const linkCount = (content.match(/<a\s+href=/gi) || []).length;
   if (linkCount === 0) {
     findings.push({ severity: 'warning', message: 'No links found in email' });
-  } else if (linkCount > 15) {
-    findings.push({ severity: 'warning', message: `High link count (${linkCount})`, detail: 'Too many links may trigger spam filters' });
+  } else if (linkCount > 10) {
+    findings.push({ severity: 'warning', message: `High link count (${linkCount})`, detail: 'More than 10 links can trigger spam filters (SpamAssassin URI rules). Aim for 2-5 links' });
   } else {
     findings.push({ severity: 'pass', message: `Appropriate link count (${linkCount})` });
   }
 
+  // Image ratio — SpamAssassin rules HTML_IMAGE_ONLY_04/08 penalize image-heavy emails.
+  // Campaign Monitor data: 1-3 images with ~200 words = best click-through.
+  // Industry standard: at least 60% text / 40% images by content area.
   const imageCount = (content.match(/<img/gi) || []).length;
   const textContent = stripHTML(content);
   const textToImageRatio = textContent.length / Math.max(imageCount * 100, 1);
 
   if (imageCount > 0 && textToImageRatio < 2) {
-    findings.push({ severity: 'warning', message: 'Image-heavy email', detail: 'Low text-to-image ratio may trigger spam filters. Ensure text alternatives exist' });
+    findings.push({ severity: 'warning', message: 'Image-heavy email', detail: 'Low text-to-image ratio triggers SpamAssassin (HTML_IMAGE_ONLY rules). Aim for 60:40 text-to-image ratio' });
   } else if (imageCount > 0) {
     findings.push({ severity: 'pass', message: 'Good text-to-image balance' });
   }
 
   if (imageCount === 0 && textContent.length > 50) {
-    findings.push({ severity: 'warning', message: 'No images detected', detail: 'Emails without images may appear unprofessional' });
+    findings.push({ severity: 'info', message: 'No images detected', detail: 'Images are optional but can improve engagement. Text-only emails are fine for transactional messages' });
   }
 
-  // Word count check
+  // Word count check — Boomerang study (40M emails): 75-125 words = best response rate.
+  // HubSpot/Campaign Monitor: 50-200 words = best click-through. We use 50-300 as the pass range.
   const wordCount = textContent.split(/\s+/).filter(w => w.length > 0).length;
   if (wordCount < 20) {
-    findings.push({ severity: 'critical', message: `Very low word count (${wordCount})`, detail: 'Email has insufficient content. This will likely be flagged as spam' });
+    findings.push({ severity: 'critical', message: `Very low word count (${wordCount})`, detail: 'Email has insufficient content. Emails under 20 words are frequently flagged as spam' });
   } else if (wordCount < 50) {
-    findings.push({ severity: 'warning', message: `Low word count (${wordCount})`, detail: 'Very short emails may not provide enough value and can trigger spam filters' });
-  } else if (wordCount > 750) {
-    findings.push({ severity: 'warning', message: `High word count (${wordCount})`, detail: 'Long emails may lose reader attention. Consider shortening' });
+    findings.push({ severity: 'warning', message: `Low word count (${wordCount})`, detail: 'Boomerang/HubSpot research shows 50-200 words gets the best engagement' });
+  } else if (wordCount > 500) {
+    findings.push({ severity: 'warning', message: `High word count (${wordCount})`, detail: 'Emails over 500 words see declining response rates (Boomerang study). Consider shortening' });
+  } else if (wordCount > 300) {
+    findings.push({ severity: 'info', message: `Word count is ${wordCount}`, detail: 'Slightly long. Studies show 75-200 words is the sweet spot for engagement' });
   } else {
     findings.push({ severity: 'pass', message: `Good word count (${wordCount})` });
   }
@@ -558,12 +582,17 @@ export function analyzeSpam(content: string, subject: string): SpamResult {
     findings.push({ severity: 'pass', message: 'Unsubscribe link present' });
   }
 
-  // Physical address
-  const hasAddress = /\d+\s+[\w\s]+,\s*[\w\s]+,\s*[A-Z]{2}/i.test(content) ||
-    /P\.?O\.?\s*Box/i.test(content);
+  // Physical address — CAN-SPAM Act (15 U.S.C. 7701-7713) requires a valid physical postal
+  // address in every commercial email. Valid: street address, PO Box, or registered CMRA (e.g. UPS Store).
+  // Penalty: up to $51,744 per email (FTC). We check common patterns.
+  const hasAddress = /\d+\s+[\w\s]+,\s*[\w\s]+,\s*[A-Z]{2}\s*\d{5}/i.test(content) ||  // US: 123 Main St, City, ST 12345
+    /\d+\s+[\w\s]+,\s*[\w\s]+,\s*[A-Z]{2}/i.test(content) ||                           // US: 123 Main St, City, ST
+    /P\.?O\.?\s*Box\s*\d+/i.test(content) ||                                             // PO Box 123
+    /[A-Z]\d[A-Z]\s*\d[A-Z]\d/i.test(content) ||                                        // Canadian postal code: A1A 1A1
+    /\d+\s+[\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|Lane|Ln|Way|Place|Pl|Court|Ct)\b/i.test(content); // Street type
   if (!hasAddress) {
     spamScore += 3;
-    findings.push({ severity: 'warning', message: 'Physical address not detected', detail: 'CAN-SPAM requires a valid physical mailing address' });
+    findings.push({ severity: 'warning', message: 'Physical address not detected', detail: 'CAN-SPAM requires a valid physical mailing address in every commercial email (up to $51,744 penalty per email)' });
   } else {
     findings.push({ severity: 'pass', message: 'Physical address included' });
   }
@@ -582,11 +611,22 @@ export function analyzeSpam(content: string, subject: string): SpamResult {
     findings.push({ severity: 'critical', message: 'URL shorteners detected', detail: 'URL shorteners are heavily associated with spam and phishing' });
   }
 
-  // Hidden text
-  const hasHiddenText = /font-size\s*:\s*0|font-size\s*:\s*1px|color\s*:\s*#fff\s*;|color\s*:\s*white\s*;/i.test(content);
+  // Hidden text — SpamAssassin INVISIBLE_TEXT rule flags text hidden via various techniques.
+  // Exclude known-legitimate preheader hiding patterns (display:none with max-height:0).
+  const preheaderPattern = /display\s*:\s*none[^"]*max-height\s*:\s*0|max-height\s*:\s*0[^"]*display\s*:\s*none/i;
+  const hiddenTextPatterns = [
+    /font-size\s*:\s*0(?:px|em|%)?\s*[;'"]/i,          // font-size: 0
+    /font-size\s*:\s*1px/i,                              // font-size: 1px
+    /color\s*:\s*#fff(?:fff)?\s*;/i,                     // color: #fff or #ffffff
+    /color\s*:\s*white\s*;/i,                             // color: white
+    /color\s*:\s*#f{3,6}\s*;.*background[^:]*:\s*#f{3,6}/i, // white text on white bg
+    /line-height\s*:\s*0/i,                              // line-height: 0
+    /overflow\s*:\s*hidden.*height\s*:\s*0|height\s*:\s*0.*overflow\s*:\s*hidden/i, // height:0 + overflow:hidden
+  ];
+  const hasHiddenText = hiddenTextPatterns.some(p => p.test(content)) && !preheaderPattern.test(content);
   if (hasHiddenText) {
     spamScore += 3;
-    findings.push({ severity: 'warning', message: 'Possible hidden text detected', detail: 'Hidden text (tiny font, white-on-white) can trigger spam filters' });
+    findings.push({ severity: 'warning', message: 'Possible hidden text detected', detail: 'SpamAssassin INVISIBLE_TEXT rule flags hidden text (tiny font, white-on-white, zero height). Preheader hiding is excluded from this check' });
   }
 
   // Excessive exclamation marks in body text
@@ -596,15 +636,18 @@ export function analyzeSpam(content: string, subject: string): SpamResult {
     findings.push({ severity: 'info', message: `${bodyExclamations} exclamation marks in body text`, detail: 'Excessive punctuation can contribute to spam scoring' });
   }
 
-  // Subject spam words (cross-check)
+  // Subject spam words (cross-check with high-signal SpamAssassin triggers)
   if (subject) {
-    const subjectSpam = ['free', 'guaranteed', 'winner', 'urgent', 'act now', 'limited time'];
+    const subjectSpam = ['free', 'guaranteed', 'winner', 'urgent', 'act now', 'limited time',
+      'congratulations', 'no cost', 'risk-free', 'buy now', 'order now', 'click here'];
     const found = subjectSpam.filter(w => subject.toLowerCase().includes(w));
     if (found.length > 0) {
       spamScore += found.length;
     }
   }
 
+  // Thresholds inspired by SpamAssassin (default threshold: 5.0 = spam).
+  // Our scale: 0-4 = low risk, 5-9 = medium, 10+ = high.
   const rating = spamScore >= 10 ? 'High Risk' : spamScore >= 5 ? 'Medium Risk' : 'Low Risk';
   const color = spamScore >= 10 ? 'red' : spamScore >= 5 ? 'yellow' : 'green';
 
@@ -641,13 +684,10 @@ export function analyzeDeliverability(content: string): AnalysisResult {
     findings.push({ severity: 'warning', message: 'No One-Click Unsubscribe support', detail: 'Gmail and Yahoo require RFC 8058 one-click unsubscribe for bulk senders (>5000/day)' });
   }
 
-  // BIMI readiness hints
-  const hasBIMIHint = /bimi|brand.*indicator|v=BIMI1/i.test(content);
-  if (hasBIMIHint) {
-    findings.push({ severity: 'pass', message: 'BIMI reference detected' });
-  } else {
-    findings.push({ severity: 'info', message: 'Consider BIMI (Brand Indicators for Message Identification)', detail: 'BIMI displays your brand logo in supported email clients. Requires DMARC enforcement and a VMC certificate' });
-  }
+  // BIMI — Brand Indicators for Message Identification. BIMI is configured via DNS
+  // (TXT record at default._bimi.<domain>), not in HTML. We can't detect it from email
+  // content alone, so we only provide informational guidance.
+  findings.push({ severity: 'info', message: 'BIMI not detected — consider implementing', detail: 'BIMI displays your brand logo in Gmail, Apple Mail, and Yahoo. Requires: DMARC at p=quarantine or p=reject, plus a paid VMC certificate (~$1,500/year from DigiCert or Entrust). Cannot be detected from HTML — it is a DNS record' });
 
   // Authentication-Results (EML files)
   const hasAuthResults = /Authentication-Results/i.test(content);
@@ -789,9 +829,10 @@ export function analyzeEmailWeight(content: string): EmailWeightResult {
     findings.push({ severity: 'pass', message: `HTML size is ${htmlSizeKB}KB (under 102KB limit)` });
   }
 
-  // Image count
-  if (imageCount > 15) {
-    findings.push({ severity: 'warning', message: `${imageCount} images detected`, detail: 'Many images increase load time and may be blocked by default' });
+  // Image count — Campaign Monitor: 1-3 images is ideal. More than 7 increases load
+  // time and spam risk. SpamAssassin HTML_IMAGE_ONLY rules flag image-heavy emails.
+  if (imageCount > 7) {
+    findings.push({ severity: 'warning', message: `${imageCount} images detected`, detail: 'More than 7 images increases load time and spam risk. Campaign Monitor data shows 1-3 images is optimal' });
   } else if (imageCount > 0) {
     findings.push({ severity: 'pass', message: `${imageCount} image${imageCount > 1 ? 's' : ''} detected` });
   }
@@ -804,11 +845,13 @@ export function analyzeEmailWeight(content: string): EmailWeightResult {
     findings.push({ severity: 'pass', message: 'All images have explicit dimensions' });
   }
 
-  // Nested tables
+  // Table count — Email on Acid recommends max 3-4 levels of nesting.
+  // Outlook's Word engine struggles with deeply nested tables.
+  // 15+ tables is common in complex emails but worth noting.
   const tableCount = (content.match(/<table/gi) || []).length;
   const nestedTableDepth = tableCount;
-  if (tableCount > 20) {
-    findings.push({ severity: 'warning', message: `${tableCount} tables detected`, detail: 'Deep table nesting can cause rendering performance issues' });
+  if (tableCount > 15) {
+    findings.push({ severity: 'warning', message: `${tableCount} tables detected`, detail: 'High table count may slow rendering in Outlook. Consider simplifying the layout' });
   } else if (tableCount > 0) {
     findings.push({ severity: 'pass', message: `${tableCount} table${tableCount > 1 ? 's' : ''} — reasonable complexity` });
   }
