@@ -499,7 +499,7 @@ export default function MethodologyPage() {
         {/* All analyzers */}
         <div className="space-y-6">
           {analyzers.map((analyzer) => (
-            <div key={analyzer.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div key={analyzer.id} id={analyzer.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden scroll-mt-4">
               <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50">
                 <span style={{ color: '#0167b4' }}>{analyzer.icon}</span>
                 <h2 className="text-lg font-bold text-slate-900">{analyzer.title}</h2>
