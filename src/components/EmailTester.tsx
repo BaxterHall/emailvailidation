@@ -130,6 +130,7 @@ export default function EmailTester() {
   const [preheader, setPreheader] = useState('');
   const [results, setResults] = useState<FullAnalysisResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [severityFilter, setSeverityFilter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -368,22 +369,65 @@ export default function EmailTester() {
                       : 'Needs work — address the critical issues before sending'}
                   </p>
                   <div className="flex gap-3 flex-wrap justify-center md:justify-start">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-red-100 text-red-700">
+                    <button
+                      onClick={() => setSeverityFilter(severityFilter === 'critical' ? null : 'critical')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
+                        severityFilter === 'critical' ? 'ring-2 ring-red-400 bg-red-200 text-red-800' : 'bg-red-100 text-red-700 hover:bg-red-200'
+                      }`}
+                    >
                       {criticalCount} Critical
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-amber-100 text-amber-700">
+                    </button>
+                    <button
+                      onClick={() => setSeverityFilter(severityFilter === 'warning' ? null : 'warning')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
+                        severityFilter === 'warning' ? 'ring-2 ring-amber-400 bg-amber-200 text-amber-800' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                      }`}
+                    >
                       {warningCount} Warnings
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold" style={{ background: '#e8f4fc', color: '#0167b4' }}>
+                    </button>
+                    <button
+                      onClick={() => setSeverityFilter(severityFilter === 'info' ? null : 'info')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all cursor-pointer"
+                      style={{
+                        background: severityFilter === 'info' ? '#cce5f5' : '#e8f4fc',
+                        color: '#0167b4',
+                        boxShadow: severityFilter === 'info' ? '0 0 0 2px #0167b4' : 'none',
+                      }}
+                    >
                       {infoCount} Info
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-green-100 text-green-700">
+                    </button>
+                    <button
+                      onClick={() => setSeverityFilter(severityFilter === 'pass' ? null : 'pass')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
+                        severityFilter === 'pass' ? 'ring-2 ring-green-400 bg-green-200 text-green-800' : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                    >
                       {passCount} Passed
-                    </span>
+                    </button>
                   </div>
                 </div>
                 <ScoreGauge score={results.overall} size={180} label="Overall Score" />
               </div>
+
+              {/* Filtered findings list */}
+              {severityFilter && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-black text-base">
+                      All {severityFilter === 'critical' ? 'Critical' : severityFilter === 'warning' ? 'Warning' : severityFilter === 'info' ? 'Info' : 'Passed'} Findings
+                    </h3>
+                    <button
+                      onClick={() => setSeverityFilter(null)}
+                      className="text-sm text-gray-500 hover:text-black transition-colors"
+                    >
+                      Clear filter
+                    </button>
+                  </div>
+                  <FindingsList
+                    findings={allFindings.filter(f => f.severity === severityFilter) as Finding[]}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Tab Navigation */}
