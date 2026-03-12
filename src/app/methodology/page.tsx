@@ -534,6 +534,166 @@ export default function MethodologyPage() {
           ))}
         </div>
 
+        {/* References */}
+        <div id="references" className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-8">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50">
+            <span style={{ color: '#0167b4' }}><Link2 className="w-5 h-5" /></span>
+            <h2 className="text-lg font-bold text-slate-900">References &amp; Sources</h2>
+          </div>
+          <div className="px-6 py-5 space-y-5">
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm mb-2">Standards &amp; Specifications</h3>
+              <ul className="space-y-1.5 text-sm">
+                <li>
+                  <a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>WCAG 2.2</a> — Web Content Accessibility Guidelines (W3C)
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#accessibility" className="hover:underline" style={{ color: '#0167b4' }}>Accessibility</a></span>
+                </li>
+                <li>
+                  <a href="https://datatracker.ietf.org/doc/html/rfc8058" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>RFC 8058</a> — One-Click Unsubscribe (IETF)
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a></span>
+                </li>
+                <li>
+                  <a href="https://datatracker.ietf.org/doc/html/rfc8601" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>RFC 8601</a> — Authentication-Results Header (IETF)
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a></span>
+                </li>
+                <li>
+                  <a href="https://bimigroup.org/implementation-guide/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>BIMI Group</a> — Brand Indicators for Message Identification
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a></span>
+                </li>
+                <li>
+                  <a href="https://schema.org/EmailMessage" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Schema.org EmailMessage</a> — Structured data for email
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#structured-data" className="hover:underline" style={{ color: '#0167b4' }}>Structured Data</a></span>
+                </li>
+                <li>
+                  <a href="https://amp.dev/documentation/guides-and-tutorials/learn/email-spec/amp-email-format/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>AMP for Email Spec</a> — Google AMP email format documentation
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#amp" className="hover:underline" style={{ color: '#0167b4' }}>AMP for Email</a></span>
+                </li>
+                <li>
+                  <a href="https://dmarc.org/overview/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>DMARC.org</a> — DMARC specification &amp; deployment guide
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a></span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm mb-2">Legislation</h3>
+              <ul className="space-y-1.5 text-sm">
+                <li>
+                  <a href="https://www.ftc.gov/legal-library/browse/rules/can-spam-rule" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>CAN-SPAM Act</a> — 15 U.S.C. 7701-7713 (FTC)
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a></span>
+                </li>
+                <li>
+                  <a href="https://laws-lois.justice.gc.ca/eng/acts/E-1.6/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>CASL</a> — Canada&apos;s Anti-Spam Legislation, S.C. 2010, c. 23
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a></span>
+                </li>
+                <li>
+                  <a href="https://gdpr-info.eu/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>GDPR</a> — General Data Protection Regulation (EU)
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a></span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm mb-2">Spam Filtering</h3>
+              <ul className="space-y-1.5 text-sm">
+                <li>
+                  <a href="https://spamassassin.apache.org/tests_3_4_x.html" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>SpamAssassin Rules</a> — Full test/rule reference (Apache)
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#subject" className="hover:underline" style={{ color: '#0167b4' }}>Subject Line</a>, <a href="#spam" className="hover:underline" style={{ color: '#0167b4' }}>Spam Analysis</a></span>
+                </li>
+                <li>
+                  <a href="https://www.mail-tester.com/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Mail-Tester</a> — Spam scoring methodology reference
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#spam" className="hover:underline" style={{ color: '#0167b4' }}>Spam Analysis</a></span>
+                </li>
+                <li>
+                  <a href="https://www.validity.com/everest/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Validity / Return Path</a> — Sender reputation &amp; deliverability data
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#subject" className="hover:underline" style={{ color: '#0167b4' }}>Subject Line</a>, <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a></span>
+                </li>
+                <li>
+                  <a href="https://blog.google/products/gmail/gmail-security-authentication-spam-protection/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Google Sender Guidelines</a> — Gmail bulk sender requirements (2024+)
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a>, <a href="#spam" className="hover:underline" style={{ color: '#0167b4' }}>Spam Analysis</a></span>
+                </li>
+                <li>
+                  <a href="https://www.mailgun.com/blog/deliverability/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Sinch Mailgun</a> — Deliverability research &amp; sender reputation
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a>, <a href="#spam" className="hover:underline" style={{ color: '#0167b4' }}>Spam Analysis</a></span>
+                </li>
+                <li>
+                  <a href="https://mailtrap.io/blog/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Mailtrap</a> — Email testing &amp; deliverability guides
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#spam" className="hover:underline" style={{ color: '#0167b4' }}>Spam Analysis</a>, <a href="#deliverability" className="hover:underline" style={{ color: '#0167b4' }}>Deliverability</a></span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm mb-2">Email Client Compatibility</h3>
+              <ul className="space-y-1.5 text-sm">
+                <li>
+                  <a href="https://www.caniemail.com/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Can I Email</a> — CSS &amp; HTML support across email clients
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#dark-mode" className="hover:underline" style={{ color: '#0167b4' }}>Dark Mode</a>, <a href="#responsive" className="hover:underline" style={{ color: '#0167b4' }}>Responsive</a>, <a href="#interactive" className="hover:underline" style={{ color: '#0167b4' }}>Interactive</a></span>
+                </li>
+                <li>
+                  <a href="https://www.litmus.com/blog" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Litmus</a> — Email rendering, preheader, and dark mode research
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#preheader" className="hover:underline" style={{ color: '#0167b4' }}>Preheader</a>, <a href="#dark-mode" className="hover:underline" style={{ color: '#0167b4' }}>Dark Mode</a>, <a href="#email-weight" className="hover:underline" style={{ color: '#0167b4' }}>Email Weight</a></span>
+                </li>
+                <li>
+                  <a href="https://www.emailonacid.com/blog/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Email on Acid</a> — Email testing &amp; compatibility guides
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#preheader" className="hover:underline" style={{ color: '#0167b4' }}>Preheader</a>, <a href="#code-quality" className="hover:underline" style={{ color: '#0167b4' }}>Code Quality</a></span>
+                </li>
+                <li>
+                  <a href="https://learn.microsoft.com/en-us/previous-versions/office/developer/o365-enterprise-dev/dn792009(v=office.15)" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Microsoft Outlook Rendering</a> — Word HTML rendering engine docs
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#outlook" className="hover:underline" style={{ color: '#0167b4' }}>Outlook Compatibility</a></span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm mb-2">Research &amp; Best Practices</h3>
+              <ul className="space-y-1.5 text-sm">
+                <li>
+                  <a href="https://www.campaignmonitor.com/resources/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Campaign Monitor</a> — Subject line &amp; engagement research
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#subject" className="hover:underline" style={{ color: '#0167b4' }}>Subject Line</a>, <a href="#preheader" className="hover:underline" style={{ color: '#0167b4' }}>Preheader</a></span>
+                </li>
+                <li>
+                  <a href="https://mailchimp.com/resources/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Mailchimp</a> — Email marketing benchmarks &amp; best practices
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#subject" className="hover:underline" style={{ color: '#0167b4' }}>Subject Line</a>, <a href="#content" className="hover:underline" style={{ color: '#0167b4' }}>Content Quality</a></span>
+                </li>
+                <li>
+                  <a href="https://www.hubspot.com/marketing-statistics" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>HubSpot</a> — Marketing &amp; spam trigger word data
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#subject" className="hover:underline" style={{ color: '#0167b4' }}>Subject Line</a>, <a href="#spam" className="hover:underline" style={{ color: '#0167b4' }}>Spam Analysis</a></span>
+                </li>
+                <li>
+                  <a href="https://www.yesware.com/blog/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Yesware</a> — Subject line question &amp; open rate research
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#subject" className="hover:underline" style={{ color: '#0167b4' }}>Subject Line</a></span>
+                </li>
+                <li>
+                  <a href="https://www.aweber.com/blog/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>AWeber</a> — Title case vs sentence case study
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#subject" className="hover:underline" style={{ color: '#0167b4' }}>Subject Line</a></span>
+                </li>
+                <li>
+                  <a href="https://www.nngroup.com/articles/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Nielsen Norman Group</a> — Readability &amp; UX research
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#content" className="hover:underline" style={{ color: '#0167b4' }}>Content Quality</a>, <a href="#accessibility" className="hover:underline" style={{ color: '#0167b4' }}>Accessibility</a></span>
+                </li>
+                <li>
+                  <a href="https://www.experian.com/marketing-services" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Experian</a> — Personalization &amp; open rate studies
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#subject" className="hover:underline" style={{ color: '#0167b4' }}>Subject Line</a></span>
+                </li>
+                <li>
+                  <a href="https://www.retentionscience.com/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>Retention Science</a> — Subject line length &amp; open rate data
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#subject" className="hover:underline" style={{ color: '#0167b4' }}>Subject Line</a></span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm mb-2">Accessibility</h3>
+              <ul className="space-y-1.5 text-sm">
+                <li>
+                  <a href="https://webaim.org/resources/contrastchecker/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>WebAIM Contrast Checker</a> — Color contrast ratio evaluation tool
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#accessibility" className="hover:underline" style={{ color: '#0167b4' }}>Accessibility</a></span>
+                </li>
+                <li>
+                  <a href="https://www.a11yproject.com/checklist/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>The A11Y Project</a> — Accessibility checklist (WCAG-based)
+                  <span className="ml-2 text-xs text-slate-400">→ <a href="#accessibility" className="hover:underline" style={{ color: '#0167b4' }}>Accessibility</a></span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="mt-12 text-center text-sm text-slate-400 pb-8">
           <p>{totalChecks} checks across {analyzers.length} analyzers</p>
