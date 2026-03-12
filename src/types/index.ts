@@ -95,7 +95,7 @@ export interface EmailClient {
   type: 'desktop' | 'mobile';
 }
 
-export type TabId = 'overview' | 'deliverability' | 'content' | 'compatibility' | 'code' | 'accessibility';
+export type TabId = 'overview' | 'deliverability' | 'content' | 'compatibility' | 'code' | 'accessibility' | 'fixes';
 
 export interface Tab {
   id: TabId;
