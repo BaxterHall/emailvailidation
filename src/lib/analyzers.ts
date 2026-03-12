@@ -214,6 +214,46 @@ export function analyzeSubjectLine(subject: string): AnalysisResult {
     findings.push({ severity: 'warning', message: 'Subject starts with RE:/FW: prefix', detail: 'Fake reply/forward prefixes are a spam technique and erode trust' });
   }
 
+  // Word count — Return Path research: 6-10 words yields highest open rates
+  const wordCount = subject.trim().split(/\s+/).length;
+  if (wordCount < 3) {
+    findings.push({ severity: 'warning', message: `Subject line is only ${wordCount} word(s)`, detail: 'Too vague. Aim for 6-10 words for best open rates (Return Path)' });
+  } else if (wordCount >= 6 && wordCount <= 10) {
+    findings.push({ severity: 'pass', message: `Word count is optimal (${wordCount} words)` });
+  } else if (wordCount > 15) {
+    findings.push({ severity: 'warning', message: `Subject line is ${wordCount} words`, detail: 'Wordy subjects get truncated and reduce engagement. Aim for 6-10 words' });
+  } else {
+    findings.push({ severity: 'pass', message: `Word count is acceptable (${wordCount} words)` });
+  }
+
+  // Leading/trailing whitespace
+  if (subject !== subject.trim()) {
+    findings.push({ severity: 'warning', message: 'Subject line has leading or trailing whitespace', detail: 'Stray spaces can look unprofessional and indicate copy-paste errors' });
+  }
+
+  // Special character overuse ($$$, ###, ***)
+  const specialCharSpam = /(\${2,}|#{2,}|\*{3,}|={3,}|~{3,}|\^{3,})/.test(subject);
+  if (specialCharSpam) {
+    findings.push({ severity: 'warning', message: 'Repeated special characters in subject', detail: 'Patterns like $$$, ###, or *** are common spam indicators' });
+  }
+
+  // Question in subject — Yesware study: questions boost open rates by ~10%
+  if (/\?/.test(subject)) {
+    findings.push({ severity: 'pass', message: 'Subject uses a question', detail: 'Questions can increase open rates by driving curiosity (Yesware research)' });
+  }
+
+  // Numbers/statistics — Campaign Monitor: subject lines with numbers get 57% higher open rates
+  if (/\d/.test(subject) && !/^(RE|FW|Fwd):/i.test(subject)) {
+    findings.push({ severity: 'pass', message: 'Subject includes a number or statistic', detail: 'Numbers add specificity and can boost open rates (Campaign Monitor)' });
+  }
+
+  // Sentence case vs ALL Title Case — AWeber research: sentence case feels more personal
+  const words = subject.split(/\s+/).filter(w => w.length > 3);
+  const capitalizedWords = words.filter(w => /^[A-Z][a-z]/.test(w));
+  if (words.length > 4 && capitalizedWords.length === words.length && !/\?$/.test(subject)) {
+    findings.push({ severity: 'info', message: 'Subject uses Title Case for every word', detail: 'Sentence case tends to feel more personal and less promotional (AWeber research)' });
+  }
+
   return { findings, score: calcScore(findings) };
 }
 

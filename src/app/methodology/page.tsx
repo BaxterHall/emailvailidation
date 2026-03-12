@@ -29,6 +29,12 @@ const analyzers: AnalyzerSection[] = [
       { name: 'Emoji detection', threshold: 'Any emoji present', source: 'Industry best practice (informational)' },
       { name: 'Personalization tokens', threshold: '{{}}, %%, *||* patterns', source: 'Experian study: personalized subjects = 26% higher open rates' },
       { name: 'RE:/FW: prefix', threshold: 'Fake reply/forward detected', source: 'SpamAssassin FAKE_REPLY_C rule' },
+      { name: 'Word count', threshold: '6-10 words optimal, <3 or >15 warning', source: 'Return Path open-rate research' },
+      { name: 'Leading/trailing whitespace', threshold: 'Any stray whitespace', source: 'QA best practice' },
+      { name: 'Special character spam', threshold: '$$$, ###, ***, etc.', source: 'SpamAssassin punctuation heuristics' },
+      { name: 'Question usage', threshold: 'Contains ?', source: 'Yesware study: questions boost open rates ~10%' },
+      { name: 'Number/statistic usage', threshold: 'Contains digits', source: 'Campaign Monitor: numbers boost open rates 57%' },
+      { name: 'Title Case detection', threshold: 'All words >3 chars capitalized', source: 'AWeber research: sentence case feels more personal' },
     ],
   },
   {
