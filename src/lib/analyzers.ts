@@ -1547,6 +1547,20 @@ export function runFullAnalysis(
     ),
   );
 
+  // Global critical cap: count all criticals across every analyzer
+  const allResults = [
+    subjectResult, preheaderResult, aiSummaryResult, ctaResult, contentResult,
+    spamResult, deliverabilityResult, darkModeResult, ampResult, structuredDataResult,
+    emailWeightResult, responsiveResult, fontStackResult, linkQualityResult,
+    interactiveResult, accessibilityResult, codeQualityResult, outlookCompatResult,
+  ];
+  const totalCriticals = allResults.reduce(
+    (sum, r) => sum + r.findings.filter((f: { severity: string }) => f.severity === 'critical').length, 0,
+  );
+  if (totalCriticals >= 4) overall = Math.min(overall, 40);
+  else if (totalCriticals >= 2) overall = Math.min(overall, 60);
+  else if (totalCriticals >= 1) overall = Math.min(overall, 75);
+
   // Global floor: if the email lacks basic HTML structure, cap overall score harshly
   const hasBasicStructure = /<html/i.test(sanitized) && /<body/i.test(sanitized);
   const hasMinContent = stripHTML(sanitized).split(/\s+/).filter(w => w.length > 0).length >= 20;
