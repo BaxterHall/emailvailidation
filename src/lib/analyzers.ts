@@ -582,7 +582,7 @@ export function analyzeSpam(content: string, subject: string): SpamResult {
     findings.push({ severity: 'pass', message: 'Unsubscribe link present' });
   }
 
-  // Physical address — CAN-SPAM Act (15 U.S.C. 7701-7713) requires a valid physical postal
+  // Physical address — CAN-SPAM Act (15 U.S.C. 7701-7713) and CASL (S.C. 2010, c. 23) require a valid physical postal
   // address in every commercial email. Valid: street address, PO Box, or registered CMRA (e.g. UPS Store).
   // Penalty: up to $51,744 per email (FTC). We check common patterns.
   const hasAddress = /\d+\s+[\w\s]+,\s*[\w\s]+,\s*[A-Z]{2}\s*\d{5}/i.test(content) ||  // US: 123 Main St, City, ST 12345
@@ -592,7 +592,7 @@ export function analyzeSpam(content: string, subject: string): SpamResult {
     /\d+\s+[\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Boulevard|Blvd|Lane|Ln|Way|Place|Pl|Court|Ct)\b/i.test(content); // Street type
   if (!hasAddress) {
     spamScore += 3;
-    findings.push({ severity: 'warning', message: 'Physical address not detected', detail: 'CAN-SPAM requires a valid physical mailing address in every commercial email (up to $51,744 penalty per email)' });
+    findings.push({ severity: 'warning', message: 'Physical address not detected', detail: 'CAN-SPAM & CASL require a valid physical mailing address in every commercial email. CAN-SPAM penalty: up to $51,744 per email (FTC). CASL penalty: up to $10M per violation (CRTC)' });
   } else {
     findings.push({ severity: 'pass', message: 'Physical address included' });
   }

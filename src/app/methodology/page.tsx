@@ -86,7 +86,7 @@ const analyzers: AnalyzerSection[] = [
     icon: <Shield className="w-5 h-5" />,
     checks: [
       { name: 'Unsubscribe link', threshold: 'Required', source: 'CAN-SPAM Act (15 U.S.C. 7701-7713), CASL, GDPR' },
-      { name: 'Physical address', threshold: 'Required (5 regex patterns)', source: 'CAN-SPAM Act — up to $51,744 penalty per email (FTC)' },
+      { name: 'Physical address', threshold: 'Required (5 regex patterns)', source: 'CAN-SPAM Act — up to $51,744/email (FTC) + CASL — up to $10M/violation (CRTC)' },
       { name: 'Excessive caps', threshold: '>3 instances of 10+ caps', source: 'SpamAssassin CAPS rules' },
       { name: 'URL shorteners', threshold: 'bit.ly, tinyurl, goo.gl, etc.', source: 'SpamAssassin / Gmail phishing filters' },
       { name: 'Hidden text', threshold: '7 patterns (excludes preheader)', source: 'SpamAssassin INVISIBLE_TEXT rule' },
@@ -317,7 +317,7 @@ export default function MethodologyPage() {
           <h2 className="text-xl font-bold text-slate-900 mb-3">Key Sources</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm text-slate-600">
             <div><strong>SpamAssassin</strong> — spam detection rules & thresholds</div>
-            <div><strong>CAN-SPAM Act</strong> — U.S. commercial email law</div>
+            <div><strong>CAN-SPAM Act / CASL</strong> — U.S. & Canadian commercial email law</div>
             <div><strong>WCAG 2.2</strong> — web accessibility guidelines</div>
             <div><strong>W3C HTML/CSS specs</strong> — web standards</div>
             <div><strong>RFC 8058</strong> — one-click unsubscribe</div>
