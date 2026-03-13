@@ -423,9 +423,48 @@ export default function EmailTester() {
                       Clear filter
                     </button>
                   </div>
-                  <FindingsList
-                    findings={allFindings.filter(f => f.severity === severityFilter) as Finding[]}
-                  />
+                  {severityFilter !== 'pass' && (
+                    <div className="mb-3">
+                      <button
+                        onClick={() => { setSeverityFilter(null); setActiveTab('fixes'); }}
+                        className="text-sm font-semibold hover:underline inline-flex items-center gap-1"
+                        style={{ color: '#0167b4' }}
+                      >
+                        <Wrench className="w-3.5 h-3.5" /> View all fixes →
+                      </button>
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    {(allFindings.filter(f => f.severity === severityFilter) as Finding[]).map((finding, idx) => {
+                      const isInfo = finding.severity === 'info';
+                      const bgClass = finding.severity === 'critical' ? 'bg-red-50 border-red-200' : finding.severity === 'warning' ? 'bg-amber-50 border-amber-200' : finding.severity === 'pass' ? 'bg-green-50 border-green-200' : '';
+                      const textClass = finding.severity === 'critical' ? 'text-red-800' : finding.severity === 'warning' ? 'text-amber-800' : finding.severity === 'pass' ? 'text-green-800' : 'text-black';
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg border ${isInfo ? '' : bgClass} ${severityFilter !== 'pass' ? 'cursor-pointer hover:shadow-sm transition-shadow' : ''}`}
+                          style={isInfo ? { background: '#f0f7fd', borderColor: '#b8ddf7' } : {}}
+                          onClick={severityFilter !== 'pass' ? () => { setSeverityFilter(null); setActiveTab('fixes'); } : undefined}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className={`text-sm font-semibold ${isInfo ? 'text-black' : textClass}`}>
+                              {finding.message}
+                            </div>
+                            {finding.detail && (
+                              <div className={`text-xs mt-0.5 opacity-80 ${isInfo ? 'text-black' : textClass}`}>
+                                {finding.detail}
+                              </div>
+                            )}
+                          </div>
+                          {severityFilter !== 'pass' && (
+                            <span className="text-xs flex-shrink-0 mt-0.5" style={{ color: '#0167b4' }}>
+                              Fix →
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -787,7 +826,13 @@ export default function EmailTester() {
                     { name: 'Fonts & Links', icon: <Link2 className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.fontStack.findings, ...results.linkQuality.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
                     { name: 'Accessibility', icon: <Accessibility className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: results.accessibility.findings.filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
                     { name: 'AMP & Structured Data', icon: <Box className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.amp.findings, ...results.structuredData.findings, ...results.interactiveElements.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                  ].filter(c => c.findings.length > 0);
+                  ].map(c => ({
+                    ...c,
+                    findings: c.findings.sort((a, b) => {
+                      const order: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+                      return (order[a.finding.severity] ?? 3) - (order[b.finding.severity] ?? 3);
+                    }),
+                  })).filter(c => c.findings.length > 0);
 
                   const totalIssues = categories.reduce((sum, c) => sum + c.findings.length, 0);
                   const criticals = categories.reduce((sum, c) => sum + c.findings.filter(f => f.finding.severity === 'critical').length, 0);
@@ -824,36 +869,52 @@ export default function EmailTester() {
                             {cat.icon} {cat.name}
                             <span className="text-xs font-normal text-gray-500">({cat.findings.length})</span>
                           </h3>
-                          <div className="space-y-3">
-                            {cat.findings.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className={`border rounded-lg overflow-hidden ${severityBg(item.finding.severity)}`}
-                              >
-                                {/* Issue header */}
-                                <div className={`px-4 py-3 border-l-4 ${severityBorder(item.finding.severity)}`}>
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="text-sm font-semibold text-black">{item.finding.message}</div>
-                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${severityLabel(item.finding.severity)}`}>
-                                      {item.finding.severity}
-                                    </span>
+                          <div className="space-y-4">
+                            {(['critical', 'warning', 'info'] as const).map(severity => {
+                              const items = cat.findings.filter(f => f.finding.severity === severity);
+                              if (items.length === 0) return null;
+                              const groupLabel = severity === 'critical' ? 'Critical' : severity === 'warning' ? 'Warning' : 'Info';
+                              const groupLabelColor = severity === 'critical' ? 'text-red-700' : severity === 'warning' ? 'text-amber-700' : '';
+                              return (
+                                <div key={severity}>
+                                  <div
+                                    className={`text-xs font-bold uppercase tracking-wider mb-2 ${groupLabelColor}`}
+                                    style={severity === 'info' ? { color: '#0167b4' } : {}}
+                                  >
+                                    {groupLabel} ({items.length})
                                   </div>
-                                  {item.finding.detail && (
-                                    <div className="text-xs text-gray-600 mt-1">{item.finding.detail}</div>
-                                  )}
-                                </div>
-                                {/* Fix instruction */}
-                                <div className="px-4 py-3 bg-white border-t border-gray-100">
-                                  <div className="flex items-start gap-2">
-                                    <Wrench className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0167b4' }} />
-                                    <div className="text-sm text-black">
-                                      <span className="font-semibold" style={{ color: '#0167b4' }}>Fix: </span>
-                                      <span className="whitespace-pre-line">{item.fix}</span>
-                                    </div>
+                                  <div className="space-y-3">
+                                    {items.map((item, idx) => (
+                                      <div
+                                        key={idx}
+                                        className={`border rounded-lg overflow-hidden ${severityBg(item.finding.severity)}`}
+                                      >
+                                        <div className={`px-4 py-3 border-l-4 ${severityBorder(item.finding.severity)}`}>
+                                          <div className="flex items-start justify-between gap-2">
+                                            <div className="text-sm font-semibold text-black">{item.finding.message}</div>
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${severityLabel(item.finding.severity)}`}>
+                                              {item.finding.severity}
+                                            </span>
+                                          </div>
+                                          {item.finding.detail && (
+                                            <div className="text-xs text-gray-600 mt-1">{item.finding.detail}</div>
+                                          )}
+                                        </div>
+                                        <div className="px-4 py-3 bg-white border-t border-gray-100">
+                                          <div className="flex items-start gap-2">
+                                            <Wrench className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0167b4' }} />
+                                            <div className="text-sm text-black">
+                                              <span className="font-semibold" style={{ color: '#0167b4' }}>Fix: </span>
+                                              <span className="whitespace-pre-line">{item.fix}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       ))}
