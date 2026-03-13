@@ -713,13 +713,19 @@ export function analyzeDeliverability(content: string): AnalysisResult {
   if (hasListUnsub) {
     findings.push({ severity: 'pass', message: hasESPUnsubscribe ? 'ESP unsubscribe merge tag detected (handles List-Unsubscribe)' : 'List-Unsubscribe header reference detected' });
   } else {
-    findings.push({ severity: 'info', message: 'No List-Unsubscribe header detected', detail: 'Add List-Unsubscribe and List-Unsubscribe-Post headers for one-click unsubscribe (RFC 8058). Required by Gmail and Yahoo as of 2024' });
+    findings.push({ severity: 'info', message: 'List-Unsubscribe header not detectable from HTML', detail: 'List-Unsubscribe is an email header added by your ESP, not HTML content. Most ESPs (Mailchimp, Sendgrid, etc.) add this automatically. Verify in your ESP settings' });
   }
 
   // One-Click Unsubscribe (RFC 8058) — ESPs with unsubscribe merge tags handle this automatically
+  // Note: List-Unsubscribe-Post is an email header, not HTML content — it can't be reliably
+  // detected from email body HTML alone. If an unsubscribe link exists in the body,
+  // we assume the ESP likely handles RFC 8058 compliance server-side.
   const hasOneClick = /List-Unsubscribe-Post/i.test(content) || hasESPUnsubscribe;
+  const hasBodyUnsub = /unsubscribe|opt[\s-]?out/gi.test(content);
   if (hasOneClick) {
     findings.push({ severity: 'pass', message: hasESPUnsubscribe ? 'ESP handles one-click unsubscribe automatically' : 'One-Click Unsubscribe (RFC 8058) detected' });
+  } else if (hasBodyUnsub) {
+    findings.push({ severity: 'info', message: 'One-Click Unsubscribe header not detectable from HTML', detail: 'List-Unsubscribe-Post is an email header set by your ESP — verify it\'s enabled in your sending platform settings. Most major ESPs add this automatically' });
   } else if (!hasListUnsub) {
     findings.push({ severity: 'warning', message: 'No One-Click Unsubscribe support', detail: 'Gmail and Yahoo require RFC 8058 one-click unsubscribe for bulk senders (>5000/day)' });
   }

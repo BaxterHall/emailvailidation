@@ -18,99 +18,111 @@ import ClientPreview from './ClientPreview';
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_CONTENT_LENGTH = 500000;
 
-// Maps issue keywords to actionable fix instructions
-function getFixInstruction(message: string): string {
+// Maps issue keywords to actionable fix instructions with source references
+function getFixInstruction(message: string): { fix: string; source: string; url: string } {
   const msg = message.toLowerCase();
 
   // Subject line fixes
-  if (msg.includes('subject') && msg.includes('long')) return 'Shorten your subject line to under 50 characters. Move extra details to the preheader text instead.';
-  if (msg.includes('subject') && msg.includes('short')) return 'Add more descriptive text to your subject line. Aim for 30-50 characters that clearly convey the email\'s value.';
-  if (msg.includes('subject') && (msg.includes('emoji') || msg.includes('special char'))) return 'Remove emojis or special characters from the subject line — they can trigger spam filters and render inconsistently.';
-  if (msg.includes('subject') && msg.includes('caps')) return 'Convert ALL CAPS words to normal casing. All-caps triggers spam filters and feels aggressive.';
-  if (msg.includes('subject') && msg.includes('spam')) return 'Remove spam trigger words (free, act now, limited time, etc.) from your subject line. Use specific, value-driven language instead.';
+  if (msg.includes('subject') && msg.includes('long')) return { fix: 'Shorten your subject line to under 50 characters. Move extra details to the preheader text instead.', source: 'Retention Science / Marketo', url: 'https://www.retentionscience.com/' };
+  if (msg.includes('subject') && msg.includes('short')) return { fix: 'Add more descriptive text to your subject line. Aim for 30-50 characters that clearly convey the email\'s value.', source: 'Retention Science / Marketo', url: 'https://www.retentionscience.com/' };
+  if (msg.includes('subject') && (msg.includes('emoji') || msg.includes('special char'))) return { fix: 'Remove emojis or special characters from the subject line — they can trigger spam filters and render inconsistently.', source: 'Campaign Monitor', url: 'https://www.campaignmonitor.com/resources/' };
+  if (msg.includes('subject') && msg.includes('caps')) return { fix: 'Convert ALL CAPS words to normal casing. All-caps triggers spam filters and feels aggressive.', source: 'SpamAssassin SUBJECT_ALL_CAPS', url: 'https://spamassassin.apache.org/tests_3_4_x.html' };
+  if (msg.includes('subject') && msg.includes('spam')) return { fix: 'Remove spam trigger words (free, act now, limited time, etc.) from your subject line. Use specific, value-driven language instead.', source: 'SpamAssassin / HubSpot', url: 'https://spamassassin.apache.org/tests_3_4_x.html' };
+  if (msg.includes('subject') && msg.includes('word count')) return { fix: 'Aim for 6-10 words in your subject line for the best open rates.', source: 'Return Path', url: 'https://www.validity.com/everest/' };
+  if (msg.includes('subject') && msg.includes('title case')) return { fix: 'Use sentence case instead of Title Case — it feels more personal and less promotional.', source: 'AWeber', url: 'https://www.aweber.com/blog/' };
+  if (msg.includes('subject') && msg.includes('exclamation')) return { fix: 'Remove extra exclamation marks. Multiple exclamation marks trigger spam filters.', source: 'SpamAssassin', url: 'https://spamassassin.apache.org/tests_3_4_x.html' };
+  if (msg.includes('subject') && msg.includes('re:') || msg.includes('fw:')) return { fix: 'Remove fake RE:/FW: prefixes. This is a known spam technique that erodes trust.', source: 'SpamAssassin FAKE_REPLY_C', url: 'https://spamassassin.apache.org/tests_3_4_x.html' };
+  if (msg.includes('subject') && msg.includes('whitespace')) return { fix: 'Trim leading and trailing whitespace from your subject line.', source: 'QA best practice', url: '' };
 
   // Preheader fixes
-  if (msg.includes('preheader') && (msg.includes('missing') || msg.includes('no preheader'))) return 'Add a preheader by inserting a hidden <span> immediately after the opening <body> tag:\n<span style="display:none;max-height:0;overflow:hidden;">Your preheader text here</span>';
-  if (msg.includes('preheader') && msg.includes('long')) return 'Shorten your preheader to 40-130 characters. After that length, email clients will pull in body text.';
-  if (msg.includes('preheader') && msg.includes('short')) return 'Extend your preheader to at least 40 characters. Add zero-width spaces (&zwnj;) after your text to prevent body text from bleeding in.';
-  if (msg.includes('preheader') && msg.includes('repeat')) return 'Make your preheader different from the subject line. Use it to add context or a secondary message.';
+  if (msg.includes('preheader') && (msg.includes('missing') || msg.includes('no preheader'))) return { fix: 'Add a preheader by inserting a hidden <span> immediately after the opening <body> tag:\n<span style="display:none;max-height:0;overflow:hidden;">Your preheader text here</span>', source: 'Litmus', url: 'https://www.litmus.com/blog' };
+  if (msg.includes('preheader') && msg.includes('long')) return { fix: 'Shorten your preheader to 40-130 characters. After that length, email clients will pull in body text.', source: 'Litmus', url: 'https://www.litmus.com/blog' };
+  if (msg.includes('preheader') && msg.includes('short')) return { fix: 'Extend your preheader to at least 40 characters. Add zero-width spaces (&zwnj;) after your text to prevent body text from bleeding in.', source: 'Litmus', url: 'https://www.litmus.com/blog' };
+  if (msg.includes('preheader') && msg.includes('repeat')) return { fix: 'Make your preheader different from the subject line. Use it to add context or a secondary message.', source: 'Campaign Monitor', url: 'https://www.campaignmonitor.com/resources/' };
 
   // Alt text / images
-  if (msg.includes('alt') && msg.includes('missing')) return 'Add descriptive alt="" attributes to every <img> tag. For decorative images, use alt="" (empty). For content images, describe what the image shows:\n<img src="hero.jpg" alt="Spring collection: 30% off all items" />';
-  if (msg.includes('alt') && msg.includes('decorat')) return 'For decorative/spacer images, set alt="" (empty string) and add role="presentation":\n<img src="spacer.gif" alt="" role="presentation" />';
-  if (msg.includes('images blocked') || msg.includes('image blocking')) return 'Add descriptive alt text and background colors behind images so the email is readable with images off. Use HTML text for key messages instead of image-only content.';
+  if (msg.includes('alt') && msg.includes('missing')) return { fix: 'Add descriptive alt="" attributes to every <img> tag. For decorative images, use alt="" (empty). For content images, describe what the image shows:\n<img src="hero.jpg" alt="Spring collection: 30% off all items" />', source: 'WCAG 2.2 (1.1.1)', url: 'https://www.w3.org/TR/WCAG22/' };
+  if (msg.includes('alt') && msg.includes('decorat')) return { fix: 'For decorative/spacer images, set alt="" (empty string) and add role="presentation":\n<img src="spacer.gif" alt="" role="presentation" />', source: 'WCAG 2.2 (1.1.1)', url: 'https://www.w3.org/TR/WCAG22/' };
+  if (msg.includes('images blocked') || msg.includes('image blocking')) return { fix: 'Add descriptive alt text and background colors behind images so the email is readable with images off. Use HTML text for key messages instead of image-only content.', source: 'Litmus', url: 'https://www.litmus.com/blog' };
 
   // Dark mode
-  if (msg.includes('dark mode') && msg.includes('meta')) return 'Add dark mode meta tag in your <head>:\n<meta name="color-scheme" content="light dark">\n<meta name="supported-color-schemes" content="light dark">';
-  if (msg.includes('dark mode') || msg.includes('color-scheme')) return 'Add dark mode support:\n1. Add <meta name="color-scheme" content="light dark"> in <head>\n2. Add @media (prefers-color-scheme: dark) { } styles\n3. Use transparent backgrounds where possible\n4. Avoid dark text on images (it disappears on dark backgrounds)';
+  if (msg.includes('dark mode') && msg.includes('meta')) return { fix: 'Add dark mode meta tag in your <head>:\n<meta name="color-scheme" content="light dark">\n<meta name="supported-color-schemes" content="light dark">', source: 'Can I Email', url: 'https://www.caniemail.com/' };
+  if (msg.includes('dark mode') || msg.includes('color-scheme')) return { fix: 'Add dark mode support:\n1. Add <meta name="color-scheme" content="light dark"> in <head>\n2. Add @media (prefers-color-scheme: dark) { } styles\n3. Use transparent backgrounds where possible\n4. Avoid dark text on images (it disappears on dark backgrounds)', source: 'Litmus / Can I Email', url: 'https://www.caniemail.com/' };
 
   // Responsive
-  if (msg.includes('viewport') && msg.includes('missing')) return 'Add the viewport meta tag in your <head>:\n<meta name="viewport" content="width=device-width, initial-scale=1.0">';
-  if (msg.includes('media quer') && msg.includes('missing')) return 'Add responsive media queries in your <style> block:\n@media only screen and (max-width: 600px) {\n  .container { width: 100% !important; }\n  .stack { display: block !important; width: 100% !important; }\n}';
-  if (msg.includes('responsive') || msg.includes('mobile')) return 'Make your email responsive: use max-width on containers, add media queries for screens under 600px, and use percentage-based widths. Stack columns vertically on mobile.';
+  if (msg.includes('viewport') && msg.includes('missing')) return { fix: 'Add the viewport meta tag in your <head>:\n<meta name="viewport" content="width=device-width, initial-scale=1.0">', source: 'Email on Acid', url: 'https://www.emailonacid.com/blog/' };
+  if (msg.includes('media quer') && msg.includes('missing')) return { fix: 'Add responsive media queries in your <style> block:\n@media only screen and (max-width: 600px) {\n  .container { width: 100% !important; }\n  .stack { display: block !important; width: 100% !important; }\n}', source: 'Can I Email', url: 'https://www.caniemail.com/' };
+  if (msg.includes('responsive') || msg.includes('mobile')) return { fix: 'Make your email responsive: use max-width on containers, add media queries for screens under 600px, and use percentage-based widths. Stack columns vertically on mobile.', source: 'Litmus', url: 'https://www.litmus.com/blog' };
 
   // CTA fixes
-  if (msg.includes('cta') && (msg.includes('missing') || msg.includes('no cta') || msg.includes('not found'))) return 'Add a clear call-to-action button using bulletproof HTML:\n<a href="https://example.com" style="background-color:#0167b4;color:#ffffff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;font-weight:bold;">Shop Now</a>';
-  if (msg.includes('cta') && msg.includes('above fold')) return 'Move your primary CTA higher in the email so it\'s visible without scrolling (within the first 350px). Place it immediately after your hero image or opening paragraph.';
-  if (msg.includes('cta') && msg.includes('button')) return 'Add button styling to your CTA links. Use padding, background-color, and border-radius inline styles. For Outlook support, wrap in VML:\n<!--[if mso]><v:roundrect><![endif]-->\n<a href="..." style="background:#0167b4;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">CTA Text</a>\n<!--[if mso]></v:roundrect><![endif]-->';
+  if (msg.includes('cta') && (msg.includes('missing') || msg.includes('no cta') || msg.includes('not found'))) return { fix: 'Add a clear call-to-action button using bulletproof HTML:\n<a href="https://example.com" style="background-color:#0167b4;color:#ffffff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;font-weight:bold;">Shop Now</a>', source: 'Campaign Monitor', url: 'https://www.campaignmonitor.com/resources/' };
+  if (msg.includes('cta') && msg.includes('above fold')) return { fix: 'Move your primary CTA higher in the email so it\'s visible without scrolling (within the first 350px). Place it immediately after your hero image or opening paragraph.', source: 'Nielsen Norman Group', url: 'https://www.nngroup.com/articles/' };
+  if (msg.includes('cta') && msg.includes('button')) return { fix: 'Add button styling to your CTA links. Use padding, background-color, and border-radius inline styles. For Outlook support, wrap in VML:\n<!--[if mso]><v:roundrect><![endif]-->\n<a href="..." style="background:#0167b4;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">CTA Text</a>\n<!--[if mso]></v:roundrect><![endif]-->', source: 'Litmus / Email on Acid', url: 'https://www.litmus.com/blog' };
 
   // Spam
-  if (msg.includes('spam') && msg.includes('word')) return 'Remove or rephrase spam trigger words. Replace "FREE" with "complimentary", "Act now" with a specific deadline, "Click here" with descriptive link text.';
-  if (msg.includes('text-to-image') || msg.includes('text to image') || msg.includes('image-heavy')) return 'Add more HTML text content. Aim for at least a 60:40 text-to-image ratio. Don\'t rely on images alone to convey your message.';
-  if (msg.includes('unsubscribe') && msg.includes('missing')) return 'Add a visible unsubscribe link in your email footer and a List-Unsubscribe header. For 2026 compliance, include one-click unsubscribe (RFC 8058):\n<a href="https://example.com/unsubscribe">Unsubscribe</a>';
+  if (msg.includes('spam') && msg.includes('word')) return { fix: 'Remove or rephrase spam trigger words. Replace "FREE" with "complimentary", "Act now" with a specific deadline, "Click here" with descriptive link text.', source: 'SpamAssassin / HubSpot', url: 'https://spamassassin.apache.org/tests_3_4_x.html' };
+  if (msg.includes('text-to-image') || msg.includes('text to image') || msg.includes('image-heavy')) return { fix: 'Add more HTML text content. Aim for at least a 60:40 text-to-image ratio. Don\'t rely on images alone to convey your message.', source: 'Mailchimp', url: 'https://mailchimp.com/resources/' };
+  if (msg.includes('unsubscribe') && msg.includes('missing')) return { fix: 'Add a visible unsubscribe link in your email footer and a List-Unsubscribe header. For 2026 compliance, include one-click unsubscribe (RFC 8058):\n<a href="https://example.com/unsubscribe">Unsubscribe</a>', source: 'RFC 8058 / Google Sender Guidelines', url: 'https://datatracker.ietf.org/doc/html/rfc8058' };
 
   // Accessibility
-  if (msg.includes('lang') && msg.includes('missing')) return 'Add the lang attribute to your <html> tag:\n<html lang="en">';
-  if (msg.includes('role') && msg.includes('presentation')) return 'Add role="presentation" to all layout tables:\n<table role="presentation" cellpadding="0" cellspacing="0">';
-  if (msg.includes('heading') || msg.includes('h1') || msg.includes('h2') || msg.includes('h3')) return 'Use proper heading tags (h1, h2, h3) instead of styled divs/spans for headings. Maintain a logical hierarchy — don\'t skip from h1 to h3.';
-  if (msg.includes('font') && msg.includes('small')) return 'Increase font sizes to at least 14px for body text and 22px for headings. On iOS, text smaller than 13px triggers auto-zoom which breaks layout.';
-  if (msg.includes('contrast') || msg.includes('color ratio')) return 'Increase the contrast between text and background colors. Use a contrast checker tool — aim for at least 4.5:1 ratio for normal text (WCAG AA).';
-  if (msg.includes('link') && msg.includes('descriptive')) return 'Replace generic link text like "Click here" or "Read more" with descriptive text that explains where the link goes: "View the full report" or "Shop spring collection".';
-  if (msg.includes('semantic')) return 'Replace <div> and <span> tags used for structure with semantic HTML: <h1>-<h6> for headings, <p> for paragraphs, <ul>/<ol> for lists.';
+  if (msg.includes('lang') && msg.includes('missing')) return { fix: 'Add the lang attribute to your <html> tag:\n<html lang="en">', source: 'WCAG 2.2 (3.1.1)', url: 'https://www.w3.org/TR/WCAG22/' };
+  if (msg.includes('role') && msg.includes('presentation')) return { fix: 'Add role="presentation" to all layout tables:\n<table role="presentation" cellpadding="0" cellspacing="0">', source: 'WCAG 2.2 / A11Y Project', url: 'https://www.a11yproject.com/checklist/' };
+  if (msg.includes('heading') || msg.includes('h1') || msg.includes('h2') || msg.includes('h3')) return { fix: 'Use proper heading tags (h1, h2, h3) instead of styled divs/spans for headings. Maintain a logical hierarchy — don\'t skip from h1 to h3.', source: 'WCAG 2.2 (1.3.1)', url: 'https://www.w3.org/TR/WCAG22/' };
+  if (msg.includes('font') && msg.includes('small')) return { fix: 'Increase font sizes to at least 14px for body text and 22px for headings. On iOS, text smaller than 13px triggers auto-zoom which breaks layout.', source: 'Nielsen Norman Group', url: 'https://www.nngroup.com/articles/' };
+  if (msg.includes('contrast') || msg.includes('color ratio')) return { fix: 'Increase the contrast between text and background colors. Use a contrast checker tool — aim for at least 4.5:1 ratio for normal text (WCAG AA).', source: 'WCAG 2.2 (1.4.3) / WebAIM', url: 'https://webaim.org/resources/contrastchecker/' };
+  if (msg.includes('link') && msg.includes('descriptive')) return { fix: 'Replace generic link text like "Click here" or "Read more" with descriptive text that explains where the link goes: "View the full report" or "Shop spring collection".', source: 'WCAG 2.2 (2.4.4)', url: 'https://www.w3.org/TR/WCAG22/' };
+  if (msg.includes('semantic')) return { fix: 'Replace <div> and <span> tags used for structure with semantic HTML: <h1>-<h6> for headings, <p> for paragraphs, <ul>/<ol> for lists.', source: 'WCAG 2.2 (1.3.1)', url: 'https://www.w3.org/TR/WCAG22/' };
 
   // Code quality
-  if (msg.includes('doctype') && msg.includes('missing')) return 'Add the HTML5 DOCTYPE at the very start of your email:\n<!DOCTYPE html>';
-  if (msg.includes('inline') && msg.includes('css')) return 'Move CSS from <style> blocks to inline styles on each element. Use a CSS inliner tool (e.g., juice, premailer) to automate this. Some email clients strip <style> blocks entirely.';
-  if (msg.includes('mismatch') || msg.includes('unclosed') || msg.includes('closing tag')) return 'Fix the mismatched/unclosed HTML tags listed above. Every opening tag needs a matching closing tag. Self-closing tags like <img /> and <br /> don\'t need closing tags.';
-  if (msg.includes('deprecated') || msg.includes('obsolete')) return 'Replace deprecated HTML attributes with CSS equivalents. For example, use style="text-align:center" instead of align="center" on non-table elements.';
-  if (msg.includes('table') && msg.includes('nested') && msg.includes('depth')) return 'Reduce table nesting depth. Deeply nested tables slow rendering and cause issues in Outlook. Aim for a maximum of 3-4 levels of nesting.';
+  if (msg.includes('doctype') && msg.includes('missing')) return { fix: 'Add the HTML5 DOCTYPE at the very start of your email:\n<!DOCTYPE html>', source: 'Email on Acid', url: 'https://www.emailonacid.com/blog/' };
+  if (msg.includes('inline') && msg.includes('css')) return { fix: 'Move CSS from <style> blocks to inline styles on each element. Use a CSS inliner tool (e.g., juice, premailer) to automate this. Some email clients strip <style> blocks entirely.', source: 'Can I Email', url: 'https://www.caniemail.com/' };
+  if (msg.includes('mismatch') || msg.includes('unclosed') || msg.includes('closing tag')) return { fix: 'Fix the mismatched/unclosed HTML tags listed above. Every opening tag needs a matching closing tag. Self-closing tags like <img /> and <br /> don\'t need closing tags.', source: 'W3C Validator', url: 'https://validator.w3.org/' };
+  if (msg.includes('deprecated') || msg.includes('obsolete')) return { fix: 'Replace deprecated HTML attributes with CSS equivalents. For example, use style="text-align:center" instead of align="center" on non-table elements.', source: 'Email on Acid', url: 'https://www.emailonacid.com/blog/' };
+  if (msg.includes('table') && msg.includes('nested') && msg.includes('depth')) return { fix: 'Reduce table nesting depth. Deeply nested tables slow rendering and cause issues in Outlook. Aim for a maximum of 3-4 levels of nesting.', source: 'Microsoft Outlook Rendering', url: 'https://learn.microsoft.com/en-us/previous-versions/office/developer/o365-enterprise-dev/dn792009(v=office.15)' };
 
   // Email weight / clipping
-  if (msg.includes('clip') || (msg.includes('size') && msg.includes('102'))) return 'Reduce your HTML to under 102KB to prevent Gmail clipping. Remove unnecessary whitespace, comments, and unused CSS. Minify your HTML before sending.';
-  if (msg.includes('weight') || (msg.includes('size') && msg.includes('large'))) return 'Reduce email file size: minify HTML, compress images, remove unused CSS, and eliminate redundant wrapper elements.';
+  if (msg.includes('clip') || (msg.includes('size') && msg.includes('102'))) return { fix: 'Reduce your HTML to under 102KB to prevent Gmail clipping. Remove unnecessary whitespace, comments, and unused CSS. Minify your HTML before sending.', source: 'Google / Litmus', url: 'https://www.litmus.com/blog' };
+  if (msg.includes('weight') || (msg.includes('size') && msg.includes('large'))) return { fix: 'Reduce email file size: minify HTML, compress images, remove unused CSS, and eliminate redundant wrapper elements.', source: 'Litmus', url: 'https://www.litmus.com/blog' };
 
   // Outlook
-  if (msg.includes('outlook') && msg.includes('css')) return 'Outlook 2007-2021 uses Word\'s rendering engine. Use table-based layouts, inline CSS only, and avoid: float, position, flexbox, grid, background-image (use VML instead), margin on block elements.';
-  if (msg.includes('outlook') && msg.includes('conditional')) return 'Use Outlook conditional comments for Outlook-specific fixes:\n<!--[if mso]>\n  <table><tr><td>Outlook-only content</td></tr></table>\n<![endif]-->';
-  if (msg.includes('vml') || (msg.includes('outlook') && msg.includes('background'))) return 'For background images in Outlook, use VML:\n<!--[if mso]>\n<v:rect style="width:600px;height:300px" fill="true">\n<v:fill type="tile" src="bg.jpg" />\n<v:textbox>\n<![endif]-->\n  Your content here\n<!--[if mso]></v:textbox></v:rect><![endif]-->';
+  if (msg.includes('outlook') && msg.includes('css')) return { fix: 'Outlook 2007-2021 uses Word\'s rendering engine. Use table-based layouts, inline CSS only, and avoid: float, position, flexbox, grid, background-image (use VML instead), margin on block elements.', source: 'Microsoft Outlook Rendering', url: 'https://learn.microsoft.com/en-us/previous-versions/office/developer/o365-enterprise-dev/dn792009(v=office.15)' };
+  if (msg.includes('outlook') && msg.includes('conditional')) return { fix: 'Use Outlook conditional comments for Outlook-specific fixes:\n<!--[if mso]>\n  <table><tr><td>Outlook-only content</td></tr></table>\n<![endif]-->', source: 'Microsoft Outlook Rendering', url: 'https://learn.microsoft.com/en-us/previous-versions/office/developer/o365-enterprise-dev/dn792009(v=office.15)' };
+  if (msg.includes('vml') || (msg.includes('outlook') && msg.includes('background'))) return { fix: 'For background images in Outlook, use VML:\n<!--[if mso]>\n<v:rect style="width:600px;height:300px" fill="true">\n<v:fill type="tile" src="bg.jpg" />\n<v:textbox>\n<![endif]-->\n  Your content here\n<!--[if mso]></v:textbox></v:rect><![endif]-->', source: 'Microsoft Outlook Rendering', url: 'https://learn.microsoft.com/en-us/previous-versions/office/developer/o365-enterprise-dev/dn792009(v=office.15)' };
 
   // AMP
-  if (msg.includes('amp')) return 'AMP for Email enables interactive content. To add AMP, include a MIME part with content-type "text/x-amp-html" and register your sending domain with Google. See: https://amp.dev/documentation/guides-and-tutorials/start/create_email/';
+  if (msg.includes('amp')) return { fix: 'AMP for Email enables interactive content. To add AMP, include a MIME part with content-type "text/x-amp-html" and register your sending domain with Google.', source: 'AMP for Email Spec', url: 'https://amp.dev/documentation/guides-and-tutorials/learn/email-spec/amp-email-format/' };
 
   // Structured data
-  if (msg.includes('structured data') || msg.includes('schema')) return 'Add JSON-LD structured data in a <script type="application/ld+json"> block in <head>. Gmail supports schemas like EmailMessage, Order, Event, and Reservation for enhanced inbox cards.';
+  if (msg.includes('structured data') || msg.includes('schema')) return { fix: 'Add JSON-LD structured data in a <script type="application/ld+json"> block in <head>. Gmail supports schemas like EmailMessage, Order, Event, and Reservation for enhanced inbox cards.', source: 'Schema.org', url: 'https://schema.org/EmailMessage' };
 
   // Font stack
-  if (msg.includes('font') && msg.includes('fallback')) return 'Add web-safe fallback fonts to your font-family declarations:\nfont-family: "Your Font", Arial, Helvetica, sans-serif;\nNever rely on a single custom font.';
-  if (msg.includes('web font') || msg.includes('@font-face')) return 'Web fonts only work in Apple Mail, iOS Mail, and some Android clients. Always include fallback fonts. Use @font-face in a <style> block, not a <link> tag.';
+  if (msg.includes('font') && msg.includes('fallback')) return { fix: 'Add web-safe fallback fonts to your font-family declarations:\nfont-family: "Your Font", Arial, Helvetica, sans-serif;\nNever rely on a single custom font.', source: 'Can I Email', url: 'https://www.caniemail.com/' };
+  if (msg.includes('web font') || msg.includes('@font-face')) return { fix: 'Web fonts only work in Apple Mail, iOS Mail, and some Android clients. Always include fallback fonts. Use @font-face in a <style> block, not a <link> tag.', source: 'Can I Email', url: 'https://www.caniemail.com/' };
 
   // Link quality
-  if (msg.includes('http://') && msg.includes('https')) return 'Change all http:// links to https://. Non-secure links trigger spam filters and browser warnings.';
-  if (msg.includes('broken') && msg.includes('link')) return 'Test all links before sending. Remove or fix any links with empty href, javascript:, or malformed URLs.';
-  if (msg.includes('tracking') && msg.includes('link')) return 'Ensure tracking links resolve correctly. Overly long or suspicious-looking tracking URLs can trigger spam filters.';
+  if (msg.includes('http://') && msg.includes('https')) return { fix: 'Change all http:// links to https://. Non-secure links trigger spam filters and browser warnings.', source: 'Google Sender Guidelines', url: 'https://blog.google/products/gmail/gmail-security-authentication-spam-protection/' };
+  if (msg.includes('broken') && msg.includes('link')) return { fix: 'Test all links before sending. Remove or fix any links with empty href, javascript:, or malformed URLs.', source: 'Email on Acid', url: 'https://www.emailonacid.com/blog/' };
+  if (msg.includes('tracking') && msg.includes('link')) return { fix: 'Ensure tracking links resolve correctly. Overly long or suspicious-looking tracking URLs can trigger spam filters.', source: 'Validity / Return Path', url: 'https://www.validity.com/everest/' };
 
   // Interactive elements
-  if (msg.includes('interactive') || msg.includes('form') || msg.includes('input')) return 'Interactive elements (forms, inputs) only work in a few email clients. Always provide a fallback link to a web version for clients that don\'t support them.';
+  if (msg.includes('interactive') || msg.includes('form') || msg.includes('input')) return { fix: 'Interactive elements (forms, inputs) only work in a few email clients. Always provide a fallback link to a web version for clients that don\'t support them.', source: 'Can I Email', url: 'https://www.caniemail.com/' };
 
   // Generic fallback
-  if (msg.includes('missing')) return 'Add the missing element referenced above to your email HTML.';
-  return 'Review the issue description above and update your email HTML accordingly. Check email client compatibility before sending.';
+  if (msg.includes('missing')) return { fix: 'Add the missing element referenced above to your email HTML.', source: '', url: '' };
+  return { fix: 'Review the issue description above and update your email HTML accordingly. Check email client compatibility before sending.', source: '', url: '' };
+}
+
+interface FixItem {
+  finding: Finding;
+  fix: string;
+  source: string;
+  url: string;
 }
 
 interface FixCategory {
   name: string;
   icon: React.ReactNode;
-  findings: { finding: Finding; fix: string }[];
+  findings: FixItem[];
 }
 
 
@@ -816,16 +828,16 @@ export default function EmailTester() {
                 {/* Fixes Tab */}
                 {activeTab === 'fixes' && (() => {
                   const categories: FixCategory[] = [
-                    { name: 'Deliverability & Spam', icon: <Shield className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.deliverability.findings, ...results.spam.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                    { name: 'Subject & Preheader', icon: <Mail className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.subject.findings, ...results.preheader.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                    { name: 'Content & CTAs', icon: <FileText className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.content.findings, ...results.cta.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                    { name: 'AI Summary', icon: <Zap className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: results.aiSummary.findings.filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                    { name: 'Dark Mode & Responsive', icon: <Palette className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.darkMode.findings, ...results.responsive.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                    { name: 'Outlook Compatibility', icon: <Monitor className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: results.outlookCompat.findings.filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                    { name: 'Code Quality & Weight', icon: <Code className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.codeQuality.findings, ...results.emailWeight.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                    { name: 'Fonts & Links', icon: <Link2 className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.fontStack.findings, ...results.linkQuality.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                    { name: 'Accessibility', icon: <Accessibility className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: results.accessibility.findings.filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
-                    { name: 'AMP & Structured Data', icon: <Box className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.amp.findings, ...results.structuredData.findings, ...results.interactiveElements.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, fix: getFixInstruction(f.message) })) },
+                    { name: 'Deliverability & Spam', icon: <Shield className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.deliverability.findings, ...results.spam.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
+                    { name: 'Subject & Preheader', icon: <Mail className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.subject.findings, ...results.preheader.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
+                    { name: 'Content & CTAs', icon: <FileText className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.content.findings, ...results.cta.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
+                    { name: 'AI Summary', icon: <Zap className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: results.aiSummary.findings.filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
+                    { name: 'Dark Mode & Responsive', icon: <Palette className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.darkMode.findings, ...results.responsive.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
+                    { name: 'Outlook Compatibility', icon: <Monitor className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: results.outlookCompat.findings.filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
+                    { name: 'Code Quality & Weight', icon: <Code className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.codeQuality.findings, ...results.emailWeight.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
+                    { name: 'Fonts & Links', icon: <Link2 className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.fontStack.findings, ...results.linkQuality.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
+                    { name: 'Accessibility', icon: <Accessibility className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: results.accessibility.findings.filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
+                    { name: 'AMP & Structured Data', icon: <Box className="w-5 h-5" style={{ color: '#0167b4' }} />, findings: [...results.amp.findings, ...results.structuredData.findings, ...results.interactiveElements.findings].filter(f => f.severity !== 'pass').map(f => ({ finding: f, ...getFixInstruction(f.message) })) },
                   ].map(c => ({
                     ...c,
                     findings: c.findings.sort((a, b) => {
@@ -908,6 +920,15 @@ export default function EmailTester() {
                                               <span className="whitespace-pre-line">{item.fix}</span>
                                             </div>
                                           </div>
+                                          {item.source && (
+                                            <div className="mt-2 ml-6 text-xs text-slate-400">
+                                              Source: {item.url ? (
+                                                <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#0167b4' }}>{item.source}</a>
+                                              ) : (
+                                                <span>{item.source}</span>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     ))}
