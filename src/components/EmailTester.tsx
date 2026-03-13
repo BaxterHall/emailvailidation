@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Upload, Activity, Zap, Shield, Eye, Code, Accessibility,
@@ -136,6 +136,11 @@ const tabs: { id: TabId; name: string; icon: React.ReactNode }[] = [
   { id: 'fixes', name: 'Fixes', icon: <Wrench className="w-4 h-4" /> },
 ];
 
+// Generate a stable DOM id from a finding message
+function fixId(message: string): string {
+  return 'fix-' + message.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '').slice(0, 60);
+}
+
 export default function EmailTester() {
   const [emailContent, setEmailContent] = useState('');
   const [subjectLine, setSubjectLine] = useState('');
@@ -143,9 +148,26 @@ export default function EmailTester() {
   const [results, setResults] = useState<FullAnalysisResults | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [severityFilter, setSeverityFilter] = useState<string | null>(null);
+  const [scrollToFix, setScrollToFix] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to a specific fix card after switching to fixes tab
+  useEffect(() => {
+    if (scrollToFix && activeTab === 'fixes') {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(scrollToFix);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-2', 'ring-blue-400');
+          setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400'), 2000);
+        }
+        setScrollToFix(null);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [scrollToFix, activeTab]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
@@ -456,7 +478,7 @@ export default function EmailTester() {
                           key={idx}
                           className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg border ${isInfo ? '' : bgClass} ${severityFilter !== 'pass' ? 'cursor-pointer hover:shadow-sm transition-shadow' : ''}`}
                           style={isInfo ? { background: '#f0f7fd', borderColor: '#b8ddf7' } : {}}
-                          onClick={severityFilter !== 'pass' ? () => { setSeverityFilter(null); setActiveTab('fixes'); } : undefined}
+                          onClick={severityFilter !== 'pass' ? () => { setSeverityFilter(null); setActiveTab('fixes'); setScrollToFix(fixId(finding.message)); } : undefined}
                         >
                           <div className="min-w-0 flex-1">
                             <div className={`text-sm font-semibold ${isInfo ? 'text-black' : textClass}`}>
@@ -899,7 +921,8 @@ export default function EmailTester() {
                                     {items.map((item, idx) => (
                                       <div
                                         key={idx}
-                                        className={`border rounded-lg overflow-hidden ${severityBg(item.finding.severity)}`}
+                                        id={fixId(item.finding.message)}
+                                        className={`border rounded-lg overflow-hidden transition-all ${severityBg(item.finding.severity)}`}
                                       >
                                         <div className={`px-4 py-3 border-l-4 ${severityBorder(item.finding.severity)}`}>
                                           <div className="flex items-start justify-between gap-2">
