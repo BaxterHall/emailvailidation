@@ -387,20 +387,51 @@ export function analyzeCTA(content: string): CTAAnalysisResult {
   let belowFoldCTAs = 0;
 
   const ctaPatterns = [
-    { pattern: /learn more/gi, type: 'informational' },
-    { pattern: /sign up/gi, type: 'conversion' },
-    { pattern: /get started/gi, type: 'conversion' },
-    { pattern: /download/gi, type: 'conversion' },
-    { pattern: /register/gi, type: 'conversion' },
-    { pattern: /subscribe/gi, type: 'conversion' },
-    { pattern: /buy now/gi, type: 'conversion' },
-    { pattern: /shop now/gi, type: 'conversion' },
-    { pattern: /book now/gi, type: 'conversion' },
-    { pattern: /contact us/gi, type: 'engagement' },
-    { pattern: /request a demo/gi, type: 'conversion' },
-    { pattern: /try free/gi, type: 'conversion' },
-    { pattern: /read more/gi, type: 'informational' },
-    { pattern: /view details/gi, type: 'informational' },
+    // E-Commerce & Sales
+    { pattern: /buy\s*(?:now|today)?/gi, type: 'conversion' },
+    { pattern: /add to (?:cart|bag|basket)/gi, type: 'conversion' },
+    { pattern: /(?:proceed to |go to )?checkout/gi, type: 'conversion' },
+    { pattern: /(?:complete )?purchase(?:\s*now)?/gi, type: 'conversion' },
+    { pattern: /(?:place |order\s*)?(?:order|now)/gi, type: 'conversion' },
+    { pattern: /shop\s*(?:now|the collection|today)?/gi, type: 'conversion' },
+    { pattern: /get\s*(?:the deal|it now|\d+%?\s*off)/gi, type: 'conversion' },
+    // SaaS & Account Creation
+    { pattern: /sign\s*up/gi, type: 'conversion' },
+    { pattern: /register(?:\s*now)?/gi, type: 'conversion' },
+    { pattern: /create (?:an? )?account/gi, type: 'conversion' },
+    { pattern: /join(?:\s*(?:now|for free))?/gi, type: 'conversion' },
+    { pattern: /(?:get )?started?/gi, type: 'conversion' },
+    { pattern: /start(?:\s*(?:free trial|my trial))?/gi, type: 'conversion' },
+    { pattern: /try(?:\s*(?:for free|now|it free))?/gi, type: 'conversion' },
+    { pattern: /subscribe(?:\s*now)?/gi, type: 'conversion' },
+    // Informational & Content
+    { pattern: /learn\s*(?:more|how)?/gi, type: 'informational' },
+    { pattern: /read\s*(?:more|full story)?/gi, type: 'informational' },
+    { pattern: /view\s*(?:more|details|gallery)?/gi, type: 'informational' },
+    { pattern: /see\s*(?:how|pricing|details)/gi, type: 'informational' },
+    { pattern: /explore(?:\s*(?:features|now))?/gi, type: 'informational' },
+    { pattern: /discover(?:\s*more)?/gi, type: 'informational' },
+    { pattern: /check\s*(?:it\s*)?out/gi, type: 'informational' },
+    { pattern: /find out more/gi, type: 'informational' },
+    // Forms & Resource Downloads
+    { pattern: /submit(?:\s*form)?/gi, type: 'conversion' },
+    { pattern: /download(?:\s*(?:pdf|now|the guide))?/gi, type: 'conversion' },
+    { pattern: /request\s*(?:a\s*)?(?:quote|demo)/gi, type: 'conversion' },
+    { pattern: /contact\s*us/gi, type: 'engagement' },
+    { pattern: /get\s*in\s*touch/gi, type: 'engagement' },
+    { pattern: /book\s*(?:a\s*)?(?:demo|now|call)?/gi, type: 'conversion' },
+    { pattern: /schedule\s*(?:a\s*)?(?:call|demo|meeting)/gi, type: 'conversion' },
+    { pattern: /save\s*(?:my seat|changes)?/gi, type: 'conversion' },
+    { pattern: /send(?:\s*(?:message|inquiry))?/gi, type: 'conversion' },
+    { pattern: /claim(?:\s*(?:offer|now|yours))?/gi, type: 'conversion' },
+    { pattern: /reserve(?:\s*(?:now|your spot))?/gi, type: 'conversion' },
+    { pattern: /activate/gi, type: 'conversion' },
+    { pattern: /upgrade(?:\s*now)?/gi, type: 'conversion' },
+    { pattern: /renew(?:\s*now)?/gi, type: 'conversion' },
+    { pattern: /rsvp/gi, type: 'conversion' },
+    { pattern: /apply(?:\s*now)?/gi, type: 'conversion' },
+    { pattern: /watch(?:\s*(?:now|video))?/gi, type: 'informational' },
+    { pattern: /listen(?:\s*now)?/gi, type: 'informational' },
   ];
 
   const linkRegex = /<a[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
@@ -428,22 +459,15 @@ export function analyzeCTA(content: string): CTAAnalysisResult {
     if (hasButtonStyling) isCTA = true;
 
     if (isCTA) {
-      // Estimate pixel position based on HTML structure before this link.
-      // Industry data (Litmus, Email on Acid): above-fold is ~300px (Outlook preview)
-      // to ~500px (Gmail web). We use 400px as a safe middle ground.
-      // Estimation: each <tr>/<div>/<p> ≈ ~40px, each <img> ≈ ~150px,
-      // spacer <td> with height ≈ its height value, padding/margin adds up.
+      // Estimate whether CTA is above the fold using character position as a
+      // percentage of the total HTML. This avoids fragile pixel-based heuristics
+      // that over-count wrapper divs, layout tables, and small images.
+      // Above-fold = roughly the first 35% of the email HTML, which corresponds
+      // to the visible area before scrolling in most clients (Litmus data:
+      // ~300px Outlook preview to ~500px Gmail web).
       const contentBeforeLink = content.substring(0, match.index);
-      const blockElements = (contentBeforeLink.match(/<tr|<div|<p/gi) || []).length;
-      const imagesBefore = (contentBeforeLink.match(/<img/gi) || []).length;
-      // Extract explicit height values from spacers/tds
-      const heightMatches = contentBeforeLink.match(/height[=:]\s*["']?(\d+)/gi) || [];
-      const explicitHeight = heightMatches.reduce((sum, m) => {
-        const val = parseInt(m.replace(/[^0-9]/g, ''));
-        return sum + (val > 0 && val < 500 ? val : 0);
-      }, 0);
-      const estimatedPx = (blockElements * 40) + (imagesBefore * 150) + explicitHeight;
-      const isAboveFold = estimatedPx < 400; // 400px = safe for most clients (Litmus data)
+      const positionPercent = (contentBeforeLink.length / content.length) * 100;
+      const isAboveFold = positionPercent < 35;
 
       ctas.push({
         text: linkText.substring(0, 100),
@@ -466,7 +490,7 @@ export function analyzeCTA(content: string): CTAAnalysisResult {
   }
 
   if (ctas.length > 0 && aboveFoldCTAs === 0) {
-    findings.push({ severity: 'critical', message: 'No CTAs above the fold', detail: 'Primary CTA should be visible without scrolling' });
+    findings.push({ severity: 'warning', message: 'No CTAs detected in the first portion of the email', detail: 'Place your primary CTA in the top 35% of the email so it\'s visible without scrolling in most clients. Above-fold varies: ~300px (Outlook preview), ~500px (Gmail web), ~350px (mobile)' });
   } else if (aboveFoldCTAs > 0) {
     findings.push({ severity: 'pass', message: `${aboveFoldCTAs} CTA${aboveFoldCTAs > 1 ? 's' : ''} above fold` });
   }
